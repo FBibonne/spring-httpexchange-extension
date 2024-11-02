@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-dependencies</artifactId>
-		<version>3.3.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>fr.insee</groupId>
-	<artifactId>httpexchange-demo</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>httpexchange-demo</name>
-	<description>Demo pour HttpExchange</description>
-	<properties>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>3.3.5</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>fr.insee</groupId>
+    <artifactId>httpexchange-demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>httpexchange-demo</name>
+    <description>Demo pour HttpExchange</description>
+    <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <wiremock.version>3.9.2</wiremock.version>
-	</properties>
-	<dependencies>
+    </properties>
+    <dependencies>
 
         <dependency>
             <groupId>org.springframework</groupId>
@@ -30,11 +30,11 @@
             <scope>provided</scope>
         </dependency>
 
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -60,13 +60,13 @@
             <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
-		<dependency>
-			<groupId>org.wiremock</groupId>
-			<artifactId>wiremock</artifactId>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
             <version>${wiremock.version}</version>
             <scope>test</scope>
-		</dependency>
+        </dependency>
 
-	</dependencies>
+    </dependencies>
 
 </project>
