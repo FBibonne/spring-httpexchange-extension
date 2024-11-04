@@ -12,12 +12,18 @@ import org.springframework.context.annotation.ScannedGenericBeanDefinition;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-//@Component
-//disabled because development in progress
+@Component
 public class RestClientServiceRegister implements BeanDefinitionRegistryPostProcessor {
+
+    /**
+     * Set at <code>** /** /*.class</code> an AntPathMatcher to search all classes
+     */
+    public static final String SEARCH_PATH_PREFIX = "**";
+
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
         findRestServiceClientInterface().forEach(metadata -> {
@@ -36,12 +42,16 @@ public class RestClientServiceRegister implements BeanDefinitionRegistryPostProc
         Class<?> targetType = Class.forName(metadata.getClassName());
         beanDefinition.setTargetType(targetType);
         beanDefinition.setScope(BeanDefinition.SCOPE_SINGLETON);
-        beanDefinition.setFactoryMethodName("httpexchangeDemoApplication");
+        beanDefinition.setFactoryMethodName("restClientServiceRegister");
         beanDefinition.setFactoryBeanName("restServiceFactory");
         arguments.addGenericArgumentValue(targetType);
         arguments.addGenericArgumentValue(findBaseUrl(metadata));
         beanDefinition.setConstructorArgumentValues(arguments);
         return beanDefinition;
+    }
+
+    public <T> T restServiceFactory(Class<T> clazz){
+        //generic method to generate REstClientService from HttpExchange annotated method interface
     }
 
     private String findBaseUrl(AnnotationMetadata metadata) {
@@ -65,11 +75,9 @@ public class RestClientServiceRegister implements BeanDefinitionRegistryPostProc
             }
         };
         scanner.addIncludeFilter(new AnnotationTypeFilter(RestServiceClient.class));
-        var beandefs = scanner.findCandidateComponents("fr.insee.demo.httpexchange");
-        List<AnnotationMetadata> annotationMetadatas = beandefs.stream().map(ScannedGenericBeanDefinition.class::cast)
+        var beandefs = scanner.findCandidateComponents(SEARCH_PATH_PREFIX);
+        return beandefs.stream().map(ScannedGenericBeanDefinition.class::cast)
                 .map(ScannedGenericBeanDefinition::getMetadata).toList();
-        System.out.println(annotationMetadatas);
-        return annotationMetadatas;
     }
 
 }
