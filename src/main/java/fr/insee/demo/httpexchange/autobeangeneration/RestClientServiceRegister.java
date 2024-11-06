@@ -13,16 +13,21 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.util.List;
 
-@Component
+import static org.springframework.web.client.support.RestClientAdapter.create;
+
+@Component(RestClientServiceRegister.BEAN_NAME)
 public class RestClientServiceRegister implements BeanDefinitionRegistryPostProcessor {
 
     /**
      * Set at <code>** /** /*.class</code> an AntPathMatcher to search all classes
      */
     public static final String SEARCH_PATH_PREFIX = "**";
+    public static final String BEAN_NAME = "restClientServiceRegister";
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
@@ -42,20 +47,22 @@ public class RestClientServiceRegister implements BeanDefinitionRegistryPostProc
         Class<?> targetType = Class.forName(metadata.getClassName());
         beanDefinition.setTargetType(targetType);
         beanDefinition.setScope(BeanDefinition.SCOPE_SINGLETON);
-        beanDefinition.setFactoryMethodName("restClientServiceRegister");
-        beanDefinition.setFactoryBeanName("restServiceFactory");
+        beanDefinition.setFactoryMethodName("restServiceFactory");
+        beanDefinition.setFactoryBeanName(BEAN_NAME);
         arguments.addGenericArgumentValue(targetType);
         arguments.addGenericArgumentValue(findBaseUrl(metadata));
         beanDefinition.setConstructorArgumentValues(arguments);
         return beanDefinition;
     }
 
-    public <T> T restServiceFactory(Class<T> clazz){
-        //generic method to generate REstClientService from HttpExchange annotated method interface
+    public <T> T restServiceFactory(Class<T> clazz, String baseUrl) {
+        RestClient restClient = RestClient.builder().baseUrl(baseUrl).build();
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(create(restClient)).build();
+        return factory.createClient(clazz);
     }
 
     private String findBaseUrl(AnnotationMetadata metadata) {
-        return metadata.getAllAnnotationAttributes("fr.insee.demo.httpexchange.autobeangeneration.RestServiceClient")
+        return metadata.getAllAnnotationAttributes(RestServiceClient.class.getName())
                 .get("baseUrl")
                 .get(0)
                 .toString();
@@ -66,7 +73,7 @@ public class RestClientServiceRegister implements BeanDefinitionRegistryPostProc
     }
 
 
-    public List<AnnotationMetadata> findRestServiceClientInterface(){
+    private List<AnnotationMetadata> findRestServiceClientInterface(){
         var scanner = new ClassPathScanningCandidateComponentProvider(false) {
             @Override
             protected boolean isCandidateComponent(@NonNull AnnotatedBeanDefinition beanDefinition) {
