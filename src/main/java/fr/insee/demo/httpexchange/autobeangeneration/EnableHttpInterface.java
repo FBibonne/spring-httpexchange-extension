@@ -7,8 +7,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@ComponentScan(basePackageClasses = RestClientServiceRegister.class)
+@ComponentScan(basePackageClasses = HttpInterfaceRegister.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface EnableRestServiceClientRegister {
+public @interface EnableHttpInterface {
 }
