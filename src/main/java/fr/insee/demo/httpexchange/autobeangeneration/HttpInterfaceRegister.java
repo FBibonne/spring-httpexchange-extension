@@ -145,6 +145,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
     }
 
     @Component(Constants.BEAN_CREATOR_NAME)
+    @SuppressWarnings("unused")
     record HttpInterfaceCreator(@Autowired(required = false) Map<String, ResponseErrorHandler> errorHandlerMap) {
 
         public HttpInterfaceCreator {

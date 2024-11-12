@@ -158,8 +158,9 @@ public class SimpleExampleTest {
     }
 
     private String regionsResponse() throws IOException {
-        var regionsResponseStream = SimpleExampleTest.class.getClassLoader().getResourceAsStream("regionResponse.json");
-        return new String(regionsResponseStream.readAllBytes());
+        try(var regionsResponseStream = SimpleExampleTest.class.getClassLoader().getResourceAsStream("regionResponse.json")){
+            return new String(regionsResponseStream.readAllBytes());
+        }
     }
 
     @EnableHttpInterface(basePackages = "fr.insee.demo.httpexchange.httpinterfaces.simple")
