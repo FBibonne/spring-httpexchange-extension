@@ -1,5 +1,6 @@
-package fr.insee.demo.httpexchange;
+package fr.insee.demo.httpexchange.httpinterfaces;
 
+import fr.insee.demo.httpexchange.Region;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.service.annotation.GetExchange;
 
