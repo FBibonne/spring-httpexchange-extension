@@ -2,6 +2,7 @@ package fr.insee.demo.httpexchange.autobeangeneration;
 
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.CannotLoadBeanClassException;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +25,8 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.util.*;
 
-import static fr.insee.demo.httpexchange.autobeangeneration.Constants.NO_ERROR_HANDLER_BEAN_NAME_VALUE;
 import static fr.insee.demo.httpexchange.autobeangeneration.Constants.GLOBSTAR_SEARCH_PATH;
+import static fr.insee.demo.httpexchange.autobeangeneration.Constants.NO_ERROR_HANDLER_BEAN_NAME_VALUE;
 import static java.util.Objects.requireNonNullElse;
 import static org.springframework.util.CollectionUtils.toMultiValueMap;
 import static org.springframework.web.client.support.RestClientAdapter.create;
@@ -40,8 +41,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
             try {
                 registry.registerBeanDefinition(getName(metadata), getBeanDefinition(metadata));
             } catch (ClassNotFoundException e) {
-                throw new BeansException("No class found for class name " + getName(metadata) + " from Spring metadata", e) {
-                };
+                throw new CannotLoadBeanClassException(metadata.getClassName(), getName(metadata), metadata.getClassName(), e);
             }
         });
     }
