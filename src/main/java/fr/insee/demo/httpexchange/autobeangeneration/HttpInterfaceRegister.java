@@ -1,6 +1,9 @@
 package fr.insee.demo.httpexchange.autobeangeneration;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.CannotLoadBeanClassException;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -15,15 +18,17 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
+import static fr.insee.demo.httpexchange.autobeangeneration.Constants.GLOBSTAR_SEARCH_PATH;
 import static fr.insee.demo.httpexchange.autobeangeneration.Constants.NO_ERROR_HANDLER_BEAN_NAME_VALUE;
+import static java.util.Objects.requireNonNullElse;
+import static org.springframework.util.CollectionUtils.toMultiValueMap;
 import static org.springframework.web.client.support.RestClientAdapter.create;
 
 @Component
@@ -31,13 +36,48 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        findRestServiceClientInterface().forEach(metadata -> {
+        var basePackagesToScan = findBasePackagesToScanFrom(registry);
+        findRestServiceClientInterface(basePackagesToScan).forEach(metadata -> {
             try {
                 registry.registerBeanDefinition(getName(metadata), getBeanDefinition(metadata));
             } catch (ClassNotFoundException e) {
-                throw new BeansException("No class found for class name "+getName(metadata)+" from Spring metadata",e) {};
+                throw new CannotLoadBeanClassException(metadata.getClassName(), getName(metadata), metadata.getClassName(), e);
             }
         });
+    }
+
+    private List<String> findBasePackagesToScanFrom(BeanDefinitionRegistry registry) {
+        return Arrays.asList(findEnableHttpInterface(registry).basePackages());
+    }
+
+    /**
+     * Find one bean annotated with @EnableHttpInterface and return the associated instance of
+     * EnableHttpInterface
+     *
+     * @param registry where to search beans
+     * @return an instance of  EnableHttpInterface wich annotates a bean type registred in registry
+     * @throws NoSuchBeanDefinitionException if no instance of EnableHttpInterface can be returned
+     */
+    private EnableHttpInterface findEnableHttpInterface(BeanDefinitionRegistry registry) {
+        return Arrays.stream(registry.getBeanDefinitionNames())
+                .map(registry::getBeanDefinition)
+                .map(this::toEnableHttpInterfaceAnnotation)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findAny()
+                .orElseThrow(() -> new NoSuchBeanDefinitionException("No @EnableHttpInterface annotated bean found"));
+    }
+
+    private Optional<EnableHttpInterface> toEnableHttpInterfaceAnnotation(BeanDefinition beanDefinition) {
+        var beanType = beanDefinition.getResolvableType().getRawClass();
+        if (beanType != null) {
+            return extractEnableHttpInterfaceAnnotationIfExist(beanType);
+        }
+        return Optional.empty();
+    }
+
+    private Optional<EnableHttpInterface> extractEnableHttpInterfaceAnnotationIfExist(Class<?> beanType) {
+        return Optional.ofNullable(beanType.getAnnotation(EnableHttpInterface.class));
     }
 
     private BeanDefinition getBeanDefinition(AnnotationMetadata metadata) throws ClassNotFoundException {
@@ -59,16 +99,21 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
     }
 
     private Optional<String> findErrorHandlerBeanName(AnnotationMetadata metadata) {
-        List<Object> errorHandlerBeanNames = metadata.getAllAnnotationAttributes(HttpInterface.class.getName())
+        List<Object> errorHandlerBeanNames = attributesOfAnnotationHttpInterface(metadata)
                 .get("errorHandlerBeanName");
-        return (CollectionUtils.isEmpty(errorHandlerBeanNames) || NO_ERROR_HANDLER_BEAN_NAME_VALUE.equals(errorHandlerBeanNames.get(0)))?
-                Optional.empty():
+        return (CollectionUtils.isEmpty(errorHandlerBeanNames) || NO_ERROR_HANDLER_BEAN_NAME_VALUE.equals(errorHandlerBeanNames.get(0))) ?
+                Optional.empty() :
                 Optional.of(errorHandlerBeanNames.get(0).toString());
+    }
+
+    @NotNull
+    private static MultiValueMap<String, Object> attributesOfAnnotationHttpInterface(AnnotationMetadata metadata) {
+        return requireNonNullElse(metadata.getAllAnnotationAttributes(HttpInterface.class.getName()), toMultiValueMap(Map.of()));
     }
 
 
     private String findBaseUrl(AnnotationMetadata metadata) {
-        return metadata.getAllAnnotationAttributes(HttpInterface.class.getName())
+        return attributesOfAnnotationHttpInterface(metadata)
                 .get("baseUrl")
                 .get(0)
                 .toString();
@@ -79,7 +124,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
     }
 
 
-    private List<AnnotationMetadata> findRestServiceClientInterface(){
+    private List<AnnotationMetadata> findRestServiceClientInterface(List<String> basePackagesToScan) {
         var scanner = new ClassPathScanningCandidateComponentProvider(false) {
             @Override
             protected boolean isCandidateComponent(@NonNull AnnotatedBeanDefinition beanDefinition) {
@@ -88,15 +133,22 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
             }
         };
         scanner.addIncludeFilter(new AnnotationTypeFilter(HttpInterface.class));
-        var beandefs = scanner.findCandidateComponents(Constants.SEARCH_PATH_PREFIX);
-        return beandefs.stream().map(ScannedGenericBeanDefinition.class::cast)
+        return fillEmptyArrayWithGlobstarPackageName(basePackagesToScan).stream()
+                .map(scanner::findCandidateComponents)
+                .flatMap(Set::stream)
+                .map(ScannedGenericBeanDefinition.class::cast)
                 .map(ScannedGenericBeanDefinition::getMetadata).toList();
     }
 
-    @Component(Constants.BEAN_CREATOR_NAME)
-    record HttpInterfaceCreator(@Autowired(required = false)Map<String, ResponseErrorHandler> errorHandlerMap) {
+    private List<String> fillEmptyArrayWithGlobstarPackageName(List<String> basePackagesToScan) {
+        return basePackagesToScan.isEmpty() ? List.of(GLOBSTAR_SEARCH_PATH) : basePackagesToScan;
+    }
 
-        public HttpInterfaceCreator{
+    @Component(Constants.BEAN_CREATOR_NAME)
+    @SuppressWarnings("unused")
+    record HttpInterfaceCreator(@Autowired(required = false) Map<String, ResponseErrorHandler> errorHandlerMap) {
+
+        public HttpInterfaceCreator {
             if (errorHandlerMap == null) {
                 errorHandlerMap = Map.of();
             }
