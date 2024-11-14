@@ -82,9 +82,15 @@ public record GreatService(RegionContract regionContract){
 
 ## Other features
 
+### In `@HttpInterface`
+
 - you can use placeholders with properties to define the base Url : `@HttpInterface(baseUrl = "${demo.baseUrl}")`
   - Just be aware to declare a `PropertySourcesPlaceholderConfigurer` bean
 - you can use an `errorHandlerBeanName` attribute in the annotation to declare a bean name which will be used as an error handler
   - Example at [fr.insee.demo.httpexchange.SimpleExampleTest#withErrorHandler_ShouldHandle4xxResponseCode](https://gitlab.insee.fr/animation-developpement/communautes-dev-sndil/ateliers/spring-httpexchange/-/blob/main/src/test/java/fr/insee/demo/httpexchange/SimpleExampleTest.java?ref_type=heads#L64)
   - you must declare a bean with the name provided in `errorHandlerBeanName` attribute and whose type is[ResponseErrorHandler](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/client/ResponseErrorHandler.html)
 
+### In `@EnableHttpInterface`
+
+- you can use attribute `basePackages` to specify which packages (including subpackages) will be scanned to find @HttpInterface annotated
+interfaces. If `basePackages` is not specified, all classpath will be scanned.

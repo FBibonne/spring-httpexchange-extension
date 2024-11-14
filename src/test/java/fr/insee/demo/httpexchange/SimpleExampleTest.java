@@ -131,6 +131,7 @@ public class SimpleExampleTest {
         assertDoesNotThrow(() -> applicationContext.value = new AnnotationConfigApplicationContext(ManyPackagesConfig.class));
         assertThat(applicationContext.value.getBean(SimpleRegionHttpInterface.class)).isNotNull();
         assertThat(applicationContext.value.getBean(RegionHttpInterfaceWithPlaceholder.class)).isNotNull();
+        assertThat(applicationContext.value.getBeanNamesForType(RegionHttpInterfaceWithErrorHandler.class)).isEmpty();
     }
 
     @Test
