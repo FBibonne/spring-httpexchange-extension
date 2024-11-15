@@ -103,7 +103,6 @@ public class SimpleExampleTest {
     }
 
     @Test
-    @Disabled("Wait for dev about cache")
     void withCacheEnabled_ShouldCacheHttpResponse() throws IOException {
         var id = "regions2019";
         stubFor(get("/nomenclature/" + id).willReturn(ok()

@@ -15,6 +15,7 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.context.annotation.ScannedGenericBeanDefinition;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.http.client.OkHttp3ClientHttpRequestFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -157,6 +158,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
         public <T> T httpInterfaceFactory(Class<T> clazz, String baseUrl, Optional<String> errorHandlerBeanName) {
             RestClient.Builder restClientBuilder = RestClient.builder().baseUrl(baseUrl);
             errorHandlerBeanName.ifPresent(s -> addErrorHandlerIfFound(s, restClientBuilder));
+            restClientBuilder.requestFactory(new OkHttp3ClientHttpRequestFactory())
             RestClient restClient = restClientBuilder.build();
             HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(create(restClient))
                     .build();
