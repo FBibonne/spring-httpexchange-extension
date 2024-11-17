@@ -1,5 +1,8 @@
 package fr.insee.demo.httpexchange.autobeangeneration;
 
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.Cache;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.CannotLoadBeanClassException;
@@ -19,19 +22,25 @@ import org.springframework.http.client.OkHttp3ClientHttpRequestFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static fr.insee.demo.httpexchange.autobeangeneration.Constants.GLOBSTAR_SEARCH_PATH;
 import static fr.insee.demo.httpexchange.autobeangeneration.Constants.NO_ERROR_HANDLER_BEAN_NAME_VALUE;
 import static java.util.Objects.requireNonNullElse;
+import static java.util.Optional.of;
 import static org.springframework.util.CollectionUtils.toMultiValueMap;
 import static org.springframework.web.client.support.RestClientAdapter.create;
 
+@Slf4j
 @Component
 public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcessor {
 
@@ -104,7 +113,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
                 .get("errorHandlerBeanName");
         return (CollectionUtils.isEmpty(errorHandlerBeanNames) || NO_ERROR_HANDLER_BEAN_NAME_VALUE.equals(errorHandlerBeanNames.get(0))) ?
                 Optional.empty() :
-                Optional.of(errorHandlerBeanNames.get(0).toString());
+                of(errorHandlerBeanNames.get(0).toString());
     }
 
     @NotNull
@@ -147,6 +156,7 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
 
     @Component(Constants.BEAN_CREATOR_NAME)
     @SuppressWarnings("unused")
+    @Slf4j
     record HttpInterfaceCreator(@Autowired(required = false) Map<String, ResponseErrorHandler> errorHandlerMap) {
 
         public HttpInterfaceCreator {
@@ -155,14 +165,39 @@ public class HttpInterfaceRegister implements BeanDefinitionRegistryPostProcesso
             }
         }
 
+
         public <T> T httpInterfaceFactory(Class<T> clazz, String baseUrl, Optional<String> errorHandlerBeanName) {
             RestClient.Builder restClientBuilder = RestClient.builder().baseUrl(baseUrl);
             errorHandlerBeanName.ifPresent(s -> addErrorHandlerIfFound(s, restClientBuilder));
-            restClientBuilder.requestFactory(new OkHttp3ClientHttpRequestFactory())
+            restClientBuilder.requestFactory(requestFactory());
             RestClient restClient = restClientBuilder.build();
             HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(create(restClient))
                     .build();
             return factory.createClient(clazz);
+        }
+
+        @SuppressWarnings("removal")/* See issue #9*/
+        private static OkHttp3ClientHttpRequestFactory requestFactory() {
+            var builder = new OkHttpClient.Builder();
+            activeCache().ifPresent(builder::cache);
+            return new OkHttp3ClientHttpRequestFactory(builder.build());
+        }
+
+        private static Optional<Cache> activeCache() {
+            try {
+                Path okHttpCache = Files.createTempDirectory("okHttpCache");
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    try{
+                        FileSystemUtils.deleteRecursively(okHttpCache);
+                    } catch (IOException ignored) {
+                        //nothing to do if we can't suppress directory because the application is shuting down
+                    }
+                }));
+                return of(new Cache(okHttpCache.toFile(), 10_000_000L));
+            } catch (IOException e) {
+                log.warn("unable to get a temporary directory for okhttp caching because {}", e.getMessage());
+                return Optional.empty();
+            }
         }
 
         private void addErrorHandlerIfFound(String beanName, RestClient.Builder restClientBuilder) {
